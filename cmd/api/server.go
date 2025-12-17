@@ -1,32 +1,44 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 	})
-	http.HandleFunc("/teachers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/teachers", func(w http.ResponseWriter, r *http.Request) {
 
 	})
-	http.HandleFunc("/students", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/students", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			query := r.URL.Query()
 			w.Write([]byte(query.Get("name")))
 		}
 	})
-	http.HandleFunc("/execs", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/execs", func(w http.ResponseWriter, r *http.Request) {
 
 	})
+	cert := "cert.pem"
+	key := "key.pem"
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
 
 	port := ":3000"
 	fmt.Println("Server running on port", port)
+	server := &http.Server{
+		Addr:      port,
+		Handler:   mux,
+		TLSConfig: tlsConfig,
+	}
 
-	err := http.ListenAndServe(port, nil)
+	err := server.ListenAndServeTLS(cert, key)
 	if err != nil {
 		log.Fatalln("Error running the server:", err)
 	}
