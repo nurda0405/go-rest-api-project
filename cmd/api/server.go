@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"restapi/internal/api/middlewares"
+	mw "restapi/internal/api/middlewares"
 )
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 	fmt.Println("Server running on port", port)
 	server := &http.Server{
 		Addr:      port,
-		Handler:   middlewares.SecurityHeaders(mux),
+		Handler:   mw.SecurityHeaders(mw.Cors(mux)),
 		TLSConfig: tlsConfig,
 	}
 
