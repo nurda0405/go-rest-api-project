@@ -35,7 +35,7 @@ func main() {
 	fmt.Println("Server running on port", port)
 	server := &http.Server{
 		Addr:      port,
-		Handler:   mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))),
+		Handler:   mw.Compression(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux)))),
 		TLSConfig: tlsConfig,
 	}
 
