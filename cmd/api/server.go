@@ -18,10 +18,13 @@ func main() {
 
 	})
 	mux.HandleFunc("/students", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
+		if r.Method == http.MethodPost {
+			fmt.Println(r.URL.Query())
 			query := r.URL.Query()
 			w.Write([]byte(query.Get("name")))
+			w.Write([]byte(r.Form.Get("name")))
 		}
+
 	})
 	mux.HandleFunc("/execs", func(w http.ResponseWriter, r *http.Request) {
 
@@ -33,12 +36,20 @@ func main() {
 	}
 
 	rl := mw.NewRateLimiter(2, 5*time.Second)
+	hppOptions := mw.HPPOptions{
+		CheckBody:               true,
+		CheckQuery:              true,
+		CheckForOnlyContentType: "x-www-form-urlencoded",
+		Whitelist:               []string{"sortOrder", "sortBy", "name", "age", "class"},
+	}
+
+	secureMux := mw.HPP(hppOptions)(rl.RateLimiterMiddleware(mw.Compression(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))))))
 
 	port := ":3000"
 	fmt.Println("Server running on port", port)
 	server := &http.Server{
 		Addr:      port,
-		Handler:   rl.RateLimiterMiddleware(mw.Compression(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))))),
+		Handler:   secureMux,
 		TLSConfig: tlsConfig,
 	}
 
