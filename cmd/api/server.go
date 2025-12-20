@@ -2,27 +2,112 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	mw "restapi/internal/api/middlewares"
+	"strconv"
+	"strings"
+	"sync"
 )
 
+type Teacher struct {
+	ID        int
+	FirstName string
+	LastName  string
+	Class     string
+	Subject   string
+}
+
+var (
+	teachers = make(map[int]Teacher)
+	mutex    = &sync.Mutex{}
+	nextID   = 1
+)
+
+func init() {
+	teachers[nextID] = Teacher{
+		ID:        nextID,
+		FirstName: "Nurlybai",
+		LastName:  "Uzakbayev",
+		Class:     "12D",
+		Subject:   "Computer Science",
+	}
+	nextID++
+
+	teachers[nextID] = Teacher{
+		ID:        nextID,
+		FirstName: "Anuar",
+		LastName:  "N/A",
+		Class:     "8D",
+		Subject:   "Math",
+	}
+	nextID++
+
+	teachers[nextID] = Teacher{
+		ID:        nextID,
+		FirstName: "Altynai",
+		LastName:  "N/A",
+		Class:     "12D",
+		Subject:   "Kazakh Language",
+	}
+}
+func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	idStr := strings.TrimSuffix(path, "/")
+	if idStr == "" {
+		firstName := r.URL.Query().Get("first_name")
+		lastName := r.URL.Query().Get("last_name")
+
+		teacherList := make([]Teacher, 0, len(teachers))
+		for _, teacher := range teachers {
+			if (firstName == "" || teacher.FirstName == firstName) && (lastName == "" || teacher.LastName == lastName) {
+				teacherList = append(teacherList, teacher)
+			}
+		}
+		response := struct {
+			Status string    `json:"status"`
+			Count  int       `json:"count"`
+			Data   []Teacher `json:"data"`
+		}{
+			Status: "success",
+			Count:  len(teacherList),
+			Data:   teacherList,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	} else {
+
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		teacher, exists := teachers[id]
+		if !exists {
+			http.Error(w, "Teacher not found", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(teacher)
+	}
+}
+
+func teachersHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		getTeachersHandler(w, r)
+	}
+}
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 	})
-	mux.HandleFunc("/teachers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/teachers/", teachersHandler)
 
-	})
 	mux.HandleFunc("/students", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			fmt.Println(r.URL.Query())
-			query := r.URL.Query()
-			w.Write([]byte(query.Get("name")))
-			w.Write([]byte(r.Form.Get("name")))
-		}
 
 	})
 	mux.HandleFunc("/execs", func(w http.ResponseWriter, r *http.Request) {
