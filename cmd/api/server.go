@@ -13,11 +13,11 @@ import (
 )
 
 type Teacher struct {
-	ID        int
-	FirstName string
-	LastName  string
-	Class     string
-	Subject   string
+	ID        int    `json:"id,omitempty"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+	Class     string `json:"class,omitempty"`
+	Subject   string `json:"subject,omitempty"`
 }
 
 var (
@@ -52,8 +52,10 @@ func init() {
 		Class:     "12D",
 		Subject:   "Kazakh Language",
 	}
+	nextID++
 }
 func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.URL.Path)
 	path := strings.TrimPrefix(r.URL.Path, "/teachers/")
 	idStr := strings.TrimSuffix(path, "/")
 	if idStr == "" {
@@ -78,7 +80,6 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(response)
 	} else {
-
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
 			fmt.Println(err)
@@ -94,10 +95,41 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func addTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	var newTeachers []Teacher
+	err := json.NewDecoder(r.Body).Decode(&newTeachers)
+	if err != nil {
+		http.Error(w, "Invalid Request Body", http.StatusBadRequest)
+		return
+	}
+	fmt.Println(newTeachers)
+	for _, newTeacher := range newTeachers {
+		newTeacher.ID = nextID
+		teachers[nextID] = newTeacher
+		nextID++
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	response := struct {
+		Status string    `json:"status"`
+		Count  int       `json:"count"`
+		Data   []Teacher `json:"data"`
+	}{
+		Status: "success",
+		Count:  len(newTeachers),
+		Data:   newTeachers,
+	}
+	json.NewEncoder(w).Encode(response)
+}
 func teachersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		getTeachersHandler(w, r)
+	case http.MethodPost:
+		addTeachersHandler(w, r)
 	}
 }
 func main() {
