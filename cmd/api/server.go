@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	mw "restapi/internal/api/middlewares"
-	"time"
 )
 
 func main() {
@@ -35,16 +34,18 @@ func main() {
 		MinVersion: tls.VersionTLS12,
 	}
 
-	rl := mw.NewRateLimiter(2, 5*time.Second)
-	hppOptions := mw.HPPOptions{
-		CheckBody:               true,
-		CheckQuery:              true,
-		CheckForOnlyContentType: "x-www-form-urlencoded",
-		Whitelist:               []string{"sortOrder", "sortBy", "name", "age", "class"},
-	}
+	// rl := mw.NewRateLimiter(2, 5*time.Second)
+	// hppOptions := mw.HPPOptions{
+	// 	CheckBody:               true,
+	// 	CheckQuery:              true,
+	// 	CheckForOnlyContentType: "x-www-form-urlencoded",
+	// 	Whitelist:               []string{"sortOrder", "sortBy", "name", "age", "class"},
+	// }
 
-	secureMux := mw.HPP(hppOptions)(rl.RateLimiterMiddleware(mw.Compression(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))))))
-
+	// cors rate time security compressioon hpp
+	// secureMux := mw.Cors(rl.RateLimiterMiddleware(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Compression(mw.HPP(hppOptions)(mux))))))
+	// secureMux := applyMiddlewares(mux, mw.HPP(hppOptions), mw.Compression, mw.SecurityHeaders, mw.ResponseTimeMiddleware, rl.RateLimiterMiddleware, mw.Cors)
+	secureMux := mw.SecurityHeaders(mux)
 	port := ":3000"
 	fmt.Println("Server running on port", port)
 	server := &http.Server{
@@ -57,5 +58,13 @@ func main() {
 	if err != nil {
 		log.Fatalln("Error running the server:", err)
 	}
+}
 
+type Middleware func(http.Handler) http.Handler
+
+func ApplyMiddlewares(handler http.Handler, middlewares ...Middleware) http.Handler {
+	for _, middleware := range middlewares {
+		handler = middleware(handler)
+	}
+	return handler
 }
