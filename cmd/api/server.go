@@ -5,11 +5,24 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	mw "restapi/internal/api/middlewares"
 	"restapi/internal/api/router"
+	"restapi/internal/repository/sqlconnect"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		return
+	}
+	_, err = sqlconnect.SqlConnect()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	cert := "cert.pem"
 	key := "key.pem"
@@ -29,7 +42,7 @@ func main() {
 	// secureMux := mw.Cors(rl.RateLimiterMiddleware(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Compression(mw.HPP(hppOptions)(mux))))))
 	// secureMux := applyMiddlewares(mux, mw.HPP(hppOptions), mw.Compression, mw.SecurityHeaders, mw.ResponseTimeMiddleware, rl.RateLimiterMiddleware, mw.Cors)
 	secureMux := mw.SecurityHeaders(router.Router())
-	port := ":3000"
+	port := os.Getenv("API_PORT")
 	fmt.Println("Server running on port", port)
 	server := &http.Server{
 		Addr:      port,
@@ -37,7 +50,7 @@ func main() {
 		TLSConfig: tlsConfig,
 	}
 
-	err := server.ListenAndServeTLS(cert, key)
+	err = server.ListenAndServeTLS(cert, key)
 	if err != nil {
 		log.Fatalln("Error running the server:", err)
 	}
