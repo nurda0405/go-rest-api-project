@@ -28,13 +28,36 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	if idStr == "" {
 		firstName := r.URL.Query().Get("first_name")
 		lastName := r.URL.Query().Get("last_name")
+		query := "SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE 1 = 1"
+		var args []interface{}
 
-		teacherList := make([]models.Teacher, 0, len(teachers))
-		for _, teacher := range teachers {
-			if (firstName == "" || teacher.FirstName == firstName) && (lastName == "" || teacher.LastName == lastName) {
-				teacherList = append(teacherList, teacher)
-			}
+		if firstName != "" {
+			query += " AND first_name = ?"
+			args = append(args, firstName)
 		}
+		if lastName != "" {
+			query += " AND last_name = ?"
+			args = append(args, lastName)
+		}
+
+		rows, err := db.Query(query, args...)
+		if err != nil {
+			http.Error(w, "Sql query error", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		teacherList := make([]models.Teacher, 0)
+		for rows.Next() {
+			var teacher models.Teacher
+			err = rows.Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
+			if err != nil {
+				http.Error(w, "Error scanning database results", http.StatusInternalServerError)
+				return
+			}
+			teacherList = append(teacherList, teacher)
+		}
+
 		response := struct {
 			Status string           `json:"status"`
 			Count  int              `json:"count"`
