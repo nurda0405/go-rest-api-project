@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	_, err = sqlconnect.SqlConnect()
+	_, err = sqlconnect.ConnectDB()
 	if err != nil {
 		fmt.Println(err)
 		return
