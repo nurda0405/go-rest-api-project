@@ -33,6 +33,8 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 
 		query, args = addFilters(r, query, args)
 
+		query = addSorting(r, query)
+
 		if firstName != "" {
 			query += " AND first_name = ?"
 			args = append(args, firstName)
@@ -91,8 +93,48 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func isValidField(field string) bool {
+	fields := map[string]bool{
+		"id":         true,
+		"first_name": true,
+		"last_name":  true,
+		"email":      true,
+		"class":      true,
+		"subject":    true,
+	}
+	_, exists := fields[field]
+	return exists
+}
+
+func isValidOrder(order string) bool {
+	return order == "asc" || order == "desc"
+}
+func addSorting(r *http.Request, query string) string {
+	sortStr := ""
+	sortParams := r.URL.Query()["sortby"]
+	if len(sortParams) > 0 {
+		for i, param := range sortParams {
+			parts := strings.Split(param, ":")
+			if len(parts) != 2 {
+				continue
+			}
+			field, order := parts[0], parts[1]
+			if isValidField(field) && isValidOrder(order) {
+				if i > 0 {
+					query += ","
+				}
+				sortStr += " " + field + " " + order
+			}
+		}
+	}
+	if sortStr != "" {
+		query += " ORDER BY" + sortStr
+	}
+	return query
+}
 func addFilters(r *http.Request, query string, args []interface{}) (string, []interface{}) {
 	params := map[string]string{
+		"id":         "id",
 		"first_name": "first_name",
 		"last_name":  "last_name",
 		"email":      "email",
