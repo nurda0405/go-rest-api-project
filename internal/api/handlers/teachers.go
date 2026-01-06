@@ -252,6 +252,69 @@ func updateTeacherHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 }
+
+func patchTeacherHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+
+	if idStr != "" {
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid id parameter", http.StatusBadRequest)
+			return
+		}
+		var updates map[string]interface{}
+		err = json.NewDecoder(r.Body).Decode(&updates)
+		if err != nil {
+			http.Error(w, "Invalid Request Payload", http.StatusBadRequest)
+			return
+		}
+
+		db, err := sqlconnect.ConnectDB()
+		if err != nil {
+			http.Error(w, "Error in connecting to database", http.StatusInternalServerError)
+			return
+		}
+
+		defer db.Close()
+		var existingTeacher models.Teacher
+		err = db.QueryRow("SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id = ?", id).Scan(&existingTeacher.ID, &existingTeacher.FirstName,
+			&existingTeacher.LastName, &existingTeacher.Email, &existingTeacher.Class, &existingTeacher.Subject)
+
+		if err == sql.ErrNoRows {
+			http.Error(w, "Teacher not found", http.StatusBadRequest)
+			return
+		} else if err != nil {
+			http.Error(w, "Unable to retrieve data", http.StatusInternalServerError)
+		}
+
+		for k, v := range updates {
+			switch k {
+			case "first_name":
+				existingTeacher.FirstName = v.(string)
+			case "last_name":
+				existingTeacher.LastName = v.(string)
+			case "email":
+				existingTeacher.Email = v.(string)
+			case "class":
+				existingTeacher.Class = v.(string)
+			case "subject":
+				existingTeacher.Subject = v.(string)
+			}
+		}
+
+		_, err = db.Exec("UPDATE teachers SET first_name = ?, last_name = ?, email = ?, class = ?, subject = ? WHERE id = ?", existingTeacher.FirstName, existingTeacher.LastName,
+			existingTeacher.Email, existingTeacher.Class, existingTeacher.Subject, existingTeacher.ID)
+
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Error updating teacher", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(existingTeacher)
+
+	}
+}
 func TeachersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -260,6 +323,8 @@ func TeachersHandler(w http.ResponseWriter, r *http.Request) {
 		addTeachersHandler(w, r)
 	case http.MethodPut:
 		updateTeacherHandler(w, r)
+	case http.MethodPatch:
+		patchTeacherHandler(w, r)
 	}
 
 }
